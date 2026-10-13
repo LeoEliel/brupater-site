@@ -29,10 +29,12 @@ Regras de uso:
 - O bundle das páginas públicas cresce com o Firestore. Registrar abaixo o tamanho antes e depois (saída do `next build`).
 - O emulador do Firestore exige Java instalado na máquina de quem roda os testes de regra.
 
+O Next.js 16 não imprime mais o "First Load JS" por rota. A medida abaixo é a soma de todos os chunks JS de `.next/static/chunks` (sem compressão), que inclui Firestore (páginas públicas) e Auth (painel).
+
 | Medida | Antes | Depois |
 |---|---|---|
-| First Load JS de `/` | _preencher_ | _preencher_ |
-| First Load JS de `/admin` | _preencher_ | _preencher_ |
+| JS total em `.next/static/chunks` | 885.044 bytes | 1.365.008 bytes (+480 KB) |
+| First Load JS por rota (`/`, `/admin`) | não medido | não medido (conferir no DevTools, aba Rede, com gzip) |
 
 ## Alternativa considerada
 
