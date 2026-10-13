@@ -19,7 +19,7 @@
  */
 import { PADRAO, OPCOES_FONTES, TAMANHOS_IMAGEM } from "@/lib/conteudo/padrao";
 import type { Site } from "@/lib/conteudo/tipos";
-import { PREVIA_CHAVE, lojaAssinar, lojaCarregar, lojaPrevia, lojaRestaurarPadrao, lojaSalvar, mesclar } from "@/lib/loja";
+import { PREVIA_CHAVE, lojaAssinar, lojaAtualizadoEmMs, lojaCarregar, lojaPrevia, lojaRestaurarPadrao, lojaSalvar, mesclar } from "@/lib/loja";
 import { CHAVE_CACHE } from "@/lib/firebase/constantes";
 import { TEMA_CHAVE, aplicarTema } from "@/lib/tema";
 import { copiaProfunda, esc, img, rota, urlSegura } from "@/lib/util";
@@ -50,6 +50,7 @@ export function iniciarPainel(): () => void {
   const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
   const raiz = $(".admin-raiz");
   let SITE: Site = lojaCarregar();
+  let baseMs: number | null = lojaAtualizadoEmMs(); // carimbo do conteúdo que o rascunho partiu (detecta edição simultânea)
   let rascunho: any = copiaProfunda(SITE);
   let sujo = false;
   let usuario: Usuario | null = null; // quem está logado (Firebase Authentication)
@@ -719,9 +720,9 @@ export function iniciarPainel(): () => void {
         if (!confirm("Isso volta o site para a versão original para todos os visitantes (a versão atual fica guardada no histórico). Continuar?")) return;
         if (!usuario || ocupado) return;
         ocupado = true;
-        lojaRestaurarPadrao(usuario.uid)
+        lojaRestaurarPadrao(baseMs, usuario.uid)
           .then(() => {
-            SITE = lojaCarregar(); rascunho = copiaProfunda(SITE); limparSujo(); aplicarNoPainel(); render(); agendarPrevia();
+            SITE = lojaCarregar(); baseMs = lojaAtualizadoEmMs(); rascunho = copiaProfunda(SITE); limparSujo(); aplicarNoPainel(); render(); agendarPrevia();
             toast("Site restaurado para a versão original.");
           })
           .catch((err) => toast(mensagemDeErro(err), true))
@@ -741,9 +742,9 @@ export function iniciarPainel(): () => void {
       const btn = $<HTMLButtonElement>("#salvar-btn");
       const rotulo = btn.textContent;
       btn.disabled = true; btn.textContent = "Salvando…";
-      lojaSalvar(rascunho, usuario.uid)
+      lojaSalvar(rascunho, baseMs, usuario.uid)
         .then(() => {
-          SITE = copiaProfunda(rascunho);
+          SITE = copiaProfunda(rascunho); baseMs = lojaAtualizadoEmMs();
           limparSujo(); agendarPrevia();
           toast("Salvo! O site já mostra as mudanças para todos os visitantes.");
         })
@@ -752,6 +753,7 @@ export function iniciarPainel(): () => void {
     };
     ouvir($("#salvar-btn"), "click", salvar);
     ouvir($("#descartar"), "click", () => {
+      SITE = lojaCarregar(); baseMs = lojaAtualizadoEmMs(); // descartar também traz o conteúdo mais novo
       rascunho = copiaProfunda(SITE); limparSujo(); aplicarNoPainel(); render(); agendarPrevia(); toast("Mudanças descartadas.");
     });
     ouvir(document, "keydown", (e: KeyboardEvent) => {
@@ -915,7 +917,7 @@ export function iniciarPainel(): () => void {
   /* mantém o conteúdo salvo em dia (ex.: outra pessoa salvou), sem atropelar o que está sendo editado */
   limpar.push(lojaAssinar(() => {
     if (sujo || ocupado) return;
-    SITE = lojaCarregar(); rascunho = copiaProfunda(SITE);
+    SITE = lojaCarregar(); baseMs = lojaAtualizadoEmMs(); rascunho = copiaProfunda(SITE);
     if (usuario) { aplicarNoPainel(); render(); }
   }));
 

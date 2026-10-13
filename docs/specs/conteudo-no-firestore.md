@@ -64,3 +64,30 @@ Arquivos: `src/lib/firebase/*` (camada nova), `src/lib/loja.ts`, `src/lib/useSit
 | Formato do PADRAO incompatível com o Firestore (lista dentro de lista) | `validarParaFirestore` roda num teste sobre o PADRAO antes de qualquer deploy |
 | Duas edições ao mesmo tempo | Transação com conferência de `atualizadoEm` (critério 10) |
 | Regras erradas expondo escrita | Testes no emulador + validação em staging + publicação em produção só com autorização (R3) |
+
+## Verificação no emulador
+
+Feita em 2026-10-13 contra o emulador (`demo-brupater`), com `npm run dev` e navegador automatizado (Chromium headless, perfis separados). Nada foi tocado na nuvem.
+
+| # | Critério | Resultado |
+|---|---|---|
+| 1 | `npm run test:regras`: 11 testes | Sim (11/11) |
+| 2 | Sem `conteudo/site`, o site mostra o PADRAO | Sim |
+| 3 | Salvar no painel (A) aparece no navegador B sem recarregar | Sim |
+| 4 | Firestore fora do ar: abre em < 8 s com a cópia ou o PADRAO, sem erro | Sim (~2 s, 0 erros de página) |
+| 5 | Visita repetida não mostra o PADRAO antes do conteúdo salvo | Sim (nenhum texto do PADRAO visível). Não conferido com throttling "Slow 4G" |
+| 6 | Trocar de página não faz nova leitura | Sim (0 novas requisições ao Firestore) |
+| 7 | Login Firebase; usuário e senha antigos saíram do código | Sim (`acessoPainel.ts` removido; `brunna`/`brupater` recusados) |
+| 8 | Conta fora de `admins` vê a mensagem de permissão | Sim |
+| 9 | Cada salvamento cria exatamente um `historico` | Sim (o primeiro salvamento, com o documento ainda inexistente, não cria histórico: não há versão anterior) |
+| 10 | Edição simultânea é recusada, nada é gravado | Sim. Bug achado e corrigido no teste: o painel agora guarda o carimbo de quando carregou o conteúdo (`baseMs`) |
+| 11 | Imagem em base64 recusada, com o campo culpado | Sim (`site.perfil.avatar`) |
+| 12 | "Voltar ao padrão" grava o PADRAO e guarda a anterior no histórico | Sim |
+| 13 | Restaurar versão do histórico | **Não verificado**: `restaurarVersao` existe em `conteudoRemoto.ts`, mas o painel não tem tela para isso (exige decisão sobre o visual do painel) |
+| 14 | "Baixar cópia (.json)" continua existindo | Sim (aba Backup; presença conferida, download não) |
+| 15 | Recuperação de senha envia o e-mail | Sim (e-mail gerado no emulador) |
+| 16 | Páginas visualmente iguais ao commit `521e7fe` | **Não verificado**: comparação visual pendente. Mudanças visíveis conhecidas: tela de login do painel (E-mail no lugar de Usuário, link "Esqueci a senha") e o cartão de acesso na apresentação |
+| 17 | Prévia ao vivo funciona e não grava | Sim |
+| 18 | `npm run verificar` | Sim |
+
+Também há `npm run test:formato`: o PADRAO é aceito por `validarParaFirestore`.

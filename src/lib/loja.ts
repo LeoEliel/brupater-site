@@ -196,11 +196,14 @@ export function lojaCarregar(): Site {
   return site;
 }
 
-/** Grava no Firestore (só com a Bru ou o Wellington logados). Lança erro se não conseguir; traduzir com mensagemDeErro(). */
-export async function lojaSalvar(site: Site, uid: string): Promise<void> {
-  const antes = lojaAtualizadoEmMs();
-  await salvarConteudo(site, antes, uid);
-  await aguardarCopiaNova(antes);
+/**
+ * Grava no Firestore (só com a Bru ou o Wellington logados). Lança erro se não conseguir; traduzir com mensagemDeErro().
+ * baseMs = lojaAtualizadoEmMs() de quando o painel carregou o conteúdo que está sendo editado: se outra pessoa
+ * salvou depois, o salvamento é recusado (ConflitoDeEdicao) em vez de sobrescrever.
+ */
+export async function lojaSalvar(site: Site, baseMs: number | null, uid: string): Promise<void> {
+  await salvarConteudo(site, baseMs, uid);
+  await aguardarCopiaNova(baseMs);
 }
 
 /* Depois de salvar, espera a escuta trazer o carimbo novo: sem isso, um segundo
@@ -232,10 +235,9 @@ export function lojaPrevia(site: Site): boolean {
 }
 
 /** Volta ao padrão. A versão anterior vai para o histórico (nada se perde). */
-export async function lojaRestaurarPadrao(uid: string): Promise<void> {
+export async function lojaRestaurarPadrao(baseMs: number | null, uid: string): Promise<void> {
   const padrao = copiaProfunda(PADRAO);
   padrao.migracoes = MIGRACOES.map((m) => m.id);
-  const antes = lojaAtualizadoEmMs();
-  await restaurarPadrao(padrao, antes, uid);
-  await aguardarCopiaNova(antes);
+  await restaurarPadrao(padrao, baseMs, uid);
+  await aguardarCopiaNova(baseMs);
 }
